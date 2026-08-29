@@ -31,3 +31,34 @@ jobs:
       - name: Terraform Destroy
         if: github.event.inputs.acao == 'destroy'
         run: terraform destroy -auto-approve
+
+      - name: Configurar kubectl
+        if: github.event.inputs.acao == 'apply'
+        run: aws eks update-kubeconfig --region sa-east-1 --name oficina-cluster
+
+      - name: Aplicar manifestos Kubernetes (exceto secret)
+        if: github.event.inputs.acao == 'apply'
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/configmap.yaml
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
+          kubectl apply -f k8s/hpa.yaml
+
+      - name: Criar secret com credenciais
+        if: github.event.inputs.acao == 'apply'
+        run: |
+          kubectl create secret generic oficina-secrets \
+            --namespace=oficina \
+            --from-literal=DB_HOST=${{ secrets.DB_HOST }} \
+            --from-literal=DB_PORT=5432 \
+            --from-literal=DB_NAME=oficina \
+            --from-literal=DB_USER=oficina \
+            --from-literal=DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
+            --from-literal=JWT_SECRET=${{ secrets.JWT_SECRET }} \
+            --save-config \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Aguardar rollout
+        if: github.event.inputs.acao == 'apply'
+        run: kubectl rollout status deployment/oficina-app -n oficina --timeout=180s
