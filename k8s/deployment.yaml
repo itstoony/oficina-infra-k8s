@@ -5,6 +5,8 @@ metadata:
   namespace: oficina
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: oficina-app
@@ -50,8 +52,8 @@ spec:
             periodSeconds: 5
           resources:
             requests:
-              cpu: "200m"
-              memory: "384Mi"
+              cpu: "100m"
+              memory: "300Mi"
             limits:
               cpu: "500m"
-              memory: "700Mi"
+              memory: "500Mi"
