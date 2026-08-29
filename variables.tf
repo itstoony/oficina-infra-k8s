@@ -7,13 +7,13 @@ variable "region" {
 variable "node_instance_type" {
   description = "Tipo de instância EC2 dos nós"
   type        = string
-  default     = "t3.medium"
+  default     = "t3.micro"
 }
 
 variable "node_desired" {
   description = "Número desejado de nós"
   type        = number
-  default     = 2
+  default     = 1
 }
 
 variable "node_max" {
