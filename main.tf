@@ -80,7 +80,7 @@ resource "aws_iam_role_policy_attachment" "eks_ecr" {
 resource "aws_eks_cluster" "oficina" {
   name     = "oficina-cluster"
   role_arn = aws_iam_role.eks_cluster.arn
-  version  = "1.30"
+  version  = "1.32"
 
   vpc_config {
     subnet_ids = data.aws_subnets.default.ids
