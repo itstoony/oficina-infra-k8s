@@ -61,4 +61,4 @@ jobs:
 
       - name: Aguardar rollout
         if: github.event.inputs.acao == 'apply'
-        run: kubectl rollout status deployment/oficina-app -n oficina --timeout=180s
+        run: kubectl rollout status deployment/oficina-app -n oficina --timeout=300s
