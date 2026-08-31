@@ -36,6 +36,10 @@ jobs:
         if: github.event.inputs.acao == 'apply'
         run: aws eks update-kubeconfig --region sa-east-1 --name oficina-cluster
 
+      - name: Liberar slot de pod (coredns para 1 réplica no t3.micro)
+        if: github.event.inputs.acao == 'apply'
+        run: kubectl scale deployment coredns --replicas=1 -n kube-system
+
       - name: Aplicar manifestos Kubernetes (exceto secret)
         if: github.event.inputs.acao == 'apply'
         run: |
