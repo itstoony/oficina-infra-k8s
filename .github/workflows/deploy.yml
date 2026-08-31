@@ -60,6 +60,7 @@ jobs:
             --from-literal=DB_USER=oficina \
             --from-literal=DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
             --from-literal=JWT_SECRET=${{ secrets.JWT_SECRET }} \
+            --from-literal=NEW_RELIC_LICENSE_KEY=${{ secrets.NEW_RELIC_LICENSE_KEY }} \
             --save-config \
             --dry-run=client -o yaml | kubectl apply -f -
 
