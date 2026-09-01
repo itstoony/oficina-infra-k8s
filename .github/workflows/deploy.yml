@@ -28,6 +28,18 @@ jobs:
       - name: Terraform Apply
         if: github.event.inputs.acao == 'apply'
         run: terraform apply -auto-approve
+      - name: Configurar kubectl (destroy)
+        if: github.event.inputs.acao == 'destroy'
+        run: aws eks update-kubeconfig --region sa-east-1 --name oficina-cluster
+
+      - name: Remover Service para limpar LoadBalancer antes do destroy
+        if: github.event.inputs.acao == 'destroy'
+        run: kubectl delete svc oficina-app -n oficina --ignore-not-found=true
+
+      - name: Aguardar remoção do LoadBalancer
+        if: github.event.inputs.acao == 'destroy'
+        run: sleep 30
+
       - name: Terraform Destroy
         if: github.event.inputs.acao == 'destroy'
         run: terraform destroy -auto-approve
