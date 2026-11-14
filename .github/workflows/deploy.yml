@@ -17,65 +17,56 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: sa-east-1
+
       - uses: hashicorp/setup-terraform@v3
+
       - name: Terraform Init
         run: terraform init
+
+      # ── APPLY ────────────────────────────────────────────────────────────────
+
       - name: Terraform Apply
         if: github.event.inputs.acao == 'apply'
         run: terraform apply -auto-approve
-      - name: Configurar kubectl (destroy)
-        if: github.event.inputs.acao == 'destroy'
-        run: aws eks update-kubeconfig --region sa-east-1 --name oficina-cluster
-
-      - name: Remover Service para limpar LoadBalancer antes do destroy
-        if: github.event.inputs.acao == 'destroy'
-        run: kubectl delete svc oficina-app -n oficina --ignore-not-found=true
-
-      - name: Aguardar remoção do LoadBalancer
-        if: github.event.inputs.acao == 'destroy'
-        run: sleep 30
-
-      - name: Terraform Destroy
-        if: github.event.inputs.acao == 'destroy'
-        run: terraform destroy -auto-approve
 
       - name: Configurar kubectl
         if: github.event.inputs.acao == 'apply'
         run: aws eks update-kubeconfig --region sa-east-1 --name oficina-cluster
 
-      - name: Liberar slot de pod (coredns para 1 réplica no t3.micro)
+      - name: Liberar slot CoreDNS (t3.micro)
         if: github.event.inputs.acao == 'apply'
         run: kubectl scale deployment coredns --replicas=1 -n kube-system
 
-      - name: Aplicar manifestos Kubernetes (exceto secret)
+      - name: Criar namespace oficina
         if: github.event.inputs.acao == 'apply'
-        run: |
-          kubectl apply -f k8s/namespace.yaml
-          kubectl apply -f k8s/configmap.yaml
-          kubectl apply -f k8s/deployment.yaml
-          kubectl apply -f k8s/service.yaml
-          kubectl apply -f k8s/hpa.yaml
+        run: kubectl apply -f k8s/namespace.yaml
 
-      - name: Criar secret com credenciais
+      - name: Deploy RabbitMQ compartilhado
         if: github.event.inputs.acao == 'apply'
-        run: |
-          kubectl create secret generic oficina-secrets \
-            --namespace=oficina \
-            --from-literal=DB_HOST=${{ secrets.DB_HOST }} \
-            --from-literal=DB_PORT=5432 \
-            --from-literal=DB_NAME=oficina \
-            --from-literal=DB_USER=oficina \
-            --from-literal=DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
-            --from-literal=JWT_SECRET=${{ secrets.JWT_SECRET }} \
-            --from-literal=NEW_RELIC_LICENSE_KEY=${{ secrets.NEW_RELIC_LICENSE_KEY }} \
-            --save-config \
-            --dry-run=client -o yaml | kubectl apply -f -
+        run: kubectl apply -f k8s/rabbitmq.yaml
 
-      - name: Aguardar rollout
+      - name: Aguardar RabbitMQ pronto
         if: github.event.inputs.acao == 'apply'
-        run: kubectl rollout status deployment/oficina-app -n oficina --timeout=300s
+        run: kubectl rollout status deployment/rabbitmq -n oficina --timeout=180s
+
+      # ── DESTROY ──────────────────────────────────────────────────────────────
+
+      - name: Configurar kubectl (destroy)
+        if: github.event.inputs.acao == 'destroy'
+        run: aws eks update-kubeconfig --region sa-east-1 --name oficina-cluster
+
+      - name: Remover LoadBalancers antes do destroy
+        if: github.event.inputs.acao == 'destroy'
+        run: |
+          kubectl delete svc --all -n oficina --ignore-not-found=true
+          sleep 30
+
+      - name: Terraform Destroy
+        if: github.event.inputs.acao == 'destroy'
+        run: terraform destroy -auto-approve
